@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Уведомление о поставке материалов</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .drag-over { border-color: #3b82f6 !important; background-color: #eff6ff !important; }
+    .cell-input { width: 100%; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
+                  padding: 4px 8px; font-size: 0.875rem; outline: none; }
+    .cell-input:focus { background: #fff; box-shadow: 0 0 0 2px #3b82f6; border-color: #3b82f6; }
+    input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <header class="bg-blue-700 text-white py-4 px-6 shadow-md">
+    <div class="max-w-5xl mx-auto">
+      <h1 class="text-xl font-bold">Уведомление о поставке материалов</h1>
+      <p class="text-blue-200 text-sm mt-0.5">Заполните форму перед доставкой на объект</p>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+
+    <!-- ── SETUP ── -->
+    <div id="setupScreen" class="hidden">
+      <div class="bg-white rounded-xl shadow-sm border border-amber-200 p-8 max-w-lg mx-auto mt-8">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="bg-amber-100 rounded-full p-2">
+            <svg class="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+            </svg>
+          </div>
+          <h2 class="text-lg font-semibold text-gray-800">Первичная настройка</h2>
+        </div>
+        <p class="text-sm text-gray-600 mb-2">Введите API-ключ Anthropic для работы системы распознавания.</p>
+        <p class="text-xs text-gray-400 mb-5">
+          Получить ключ: <a href="https://console.anthropic.com" target="_blank"
+            class="text-blue-600 underline">console.anthropic.com</a> → API Keys → Create Key.<br>
+          Ключ начинается на <code class="bg-gray-100 px-1 rounded">sk-ant-</code>
+        </p>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Claude API Key</label>
+          <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..."
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button onclick="doSaveApiKey()"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors">
+          Сохранить и продолжить
+        </button>
+      </div>
+    </div>
+
+    <!-- ── STEP 1 ── -->
+    <div id="step1" class="hidden">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-5">Информация о поставке</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Поставщик <span class="text-red-500">*</span></label>
+            <input type="text" id="supplier" placeholder="Название компании"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Объект <span class="text-red-500">*</span></label>
+            <select id="object"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <option value="">Выберите объект...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Номер заявки <span class="text-red-500">*</span></label>
+            <input type="text" id="requestNumber" placeholder="№ заявки"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Плановая дата поставки <span class="text-red-500">*</span></label>
+            <input type="date" id="deliveryDate"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Фото или скан заявки <span class="text-red-500">*</span>
+          </label>
+          <div id="dropZone"
+            class="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+            onclick="document.getElementById('fileInput').click()"
+            ondragover="handleDragOver(event)" ondragleave="handleDragLeave()" ondrop="handleDrop(event)">
+            <div id="dropContent">
+              <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+              <p class="text-sm text-gray-600">Перетащите файл или <span class="text-blue-600 font-medium">выберите</span></p>
+              <p class="text-xs text-gray-400 mt-1">JPG, PNG, PDF — до 10 МБ</p>
+            </div>
+            <div id="filePreview" class="hidden flex-col items-center">
+              <svg class="mx-auto h-9 w-9 text-green-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <p class="text-sm font-semibold text-gray-700" id="fileName"></p>
+              <p class="text-xs text-gray-400" id="fileSize"></p>
+              <button class="mt-2 text-xs text-red-500 hover:text-red-700 underline" onclick="clearFile(event)">Удалить</button>
+            </div>
+          </div>
+          <input type="file" id="fileInput" class="hidden" accept="image/*,.pdf" onchange="handleFileSelect(event)">
+        </div>
+      </div>
+
+      <div class="flex justify-center">
+        <button onclick="startRecognition()"
+          class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold px-10 py-3 rounded-xl shadow text-sm transition-colors">
+          Распознать данные →
+        </button>
+      </div>
+    </div>
+
+    <!-- ── LOADING ── -->
+    <div id="loading" class="hidden text-center py-20">
+      <div class="inline-block relative w-16 h-16 mb-5">
+        <div class="absolute inset-0 rounded-full border-4 border-blue-100"></div>
+        <div class="absolute inset-0 rounded-full border-4 border-t-blue-600 animate-spin"></div>
+      </div>
+      <p class="text-gray-700 font-medium text-lg">Распознаём данные из документа...</p>
+      <p class="text-gray-400 text-sm mt-2">Обычно занимает 10–30 секунд</p>
+    </div>
+
+    <!-- ── STEP 2: Таблица ── -->
+    <div id="step2" class="hidden">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-5 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-base font-semibold text-gray-800">Проверьте и отредактируйте данные</h2>
+          <div class="flex items-center gap-3">
+            <a id="fileLink" href="#" target="_blank"
+              class="hidden text-xs text-blue-600 hover:text-blue-800 underline whitespace-nowrap">
+              Открыть заявку ↗
+            </a>
+            <span class="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full" id="summaryInfo"></span>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
+                <th class="text-left px-4 py-3 font-semibold whitespace-nowrap">Поставщик</th>
+                <th class="text-left px-4 py-3 font-semibold whitespace-nowrap">Объект</th>
+                <th class="text-left px-4 py-3 font-semibold min-w-56">Номенклатура</th>
+                <th class="text-left px-4 py-3 font-semibold w-24">Ед. изм.</th>
+                <th class="text-left px-4 py-3 font-semibold w-28">Количество</th>
+                <th class="text-left px-4 py-3 font-semibold w-36 whitespace-nowrap">Дата поставки</th>
+                <th class="px-3 py-3 w-8"></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="px-6 py-3 border-t border-gray-100">
+          <button onclick="addRow()"
+            class="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium py-1">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Добавить строку
+          </button>
+        </div>
+      </div>
+
+      <div class="flex gap-3 justify-center">
+        <button onclick="goBack()"
+          class="border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium px-6 py-2.5 rounded-xl text-sm transition-colors">
+          ← Назад
+        </button>
+        <button onclick="submitData()" id="submitBtn"
+          class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold px-10 py-2.5 rounded-xl shadow text-sm transition-colors">
+          Отправить в таблицу ✓
+        </button>
+      </div>
+    </div>
+
+    <!-- ── SUCCESS ── -->
+    <div id="success" class="hidden text-center py-20">
+      <div class="bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-5">
+        <svg class="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Данные отправлены!</h2>
+      <p class="text-gray-500 mb-8">Информация о поставке зафиксирована в системе генподрядчика.</p>
+      <button onclick="resetForm()"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-xl text-sm shadow">
+        Подать новое уведомление
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Error toast -->
+  <div id="errorToast"
+    class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 bg-red-600 text-white px-5 py-3 rounded-xl shadow-xl text-sm z-50 max-w-sm text-center">
+    <span id="errorMsg"></span>
+  </div>
+
+  <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxAcrSDH6xa65Wor3ZHpW3BcZ-yAwwN9PFTynCNDYUbpP7NOev6Ng0e0lH84ykz29nN/exec';
+
+    async function gasCall(action, params = {}) {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action, ...params })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error);
+      return json.data;
+    }
+
+    let selectedFile = null;
+    let fileUrl      = null;
+
+    window.addEventListener('load', async () => {
+      try {
+        const cfg = await gasCall('isConfigured');
+        if (!cfg.hasApiKey) show('setupScreen');
+        else initApp();
+      } catch (err) {
+        show('step1');
+        showError('Ошибка соединения: ' + err.message);
+      }
+    });
+
+    function initApp() {
+      show('step1');
+      gasCall('getObjectsList').then(objects => {
+        const sel = document.getElementById('object');
+        (objects || []).forEach(obj => {
+          const opt = document.createElement('option');
+          opt.value = opt.textContent = obj;
+          sel.appendChild(opt);
+        });
+      }).catch(err => showError('Ошибка загрузки объектов: ' + err.message));
+    }
+
+    function doSaveApiKey() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      if (!key) { showError('Введите API-ключ'); return; }
+      gasCall('saveApiKey', { key })
+        .then(() => initApp())
+        .catch(err => showError(err.message));
+    }
+
+    // Drag & Drop
+    function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag-over'); }
+    function handleDragLeave()  { document.getElementById('dropZone').classList.remove('drag-over'); }
+    function handleDrop(e)      { e.preventDefault(); handleDragLeave(); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); }
+    function handleFileSelect(e){ if (e.target.files[0]) setFile(e.target.files[0]); }
+
+    function setFile(file) {
+      if (file.size > 10 * 1024 * 1024) { showError('Файл больше 10 МБ'); return; }
+      selectedFile = file;
+      document.getElementById('dropContent').classList.add('hidden');
+      const fp = document.getElementById('filePreview');
+      fp.classList.remove('hidden'); fp.classList.add('flex');
+      document.getElementById('fileName').textContent = file.name;
+      document.getElementById('fileSize').textContent = (file.size / 1024 / 1024).toFixed(2) + ' МБ';
+    }
+
+    function clearFile(e) {
+      e.stopPropagation();
+      selectedFile = null;
+      document.getElementById('fileInput').value = '';
+      document.getElementById('dropContent').classList.remove('hidden');
+      const fp = document.getElementById('filePreview');
+      fp.classList.add('hidden'); fp.classList.remove('flex');
+    }
+
+    function fileToBase64(file) {
+      return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = e => res(e.target.result.split(',')[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+    }
+
+    async function prepareFile(file) {
+      if (file.type === 'application/pdf') return file;
+      return new Promise(resolve => {
+        const img = new Image(), url = URL.createObjectURL(file);
+        img.onload = () => {
+          const MAX = 2400;
+          let w = img.width, h = img.height;
+          if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+          c.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.88);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+        img.src = url;
+      });
+    }
+
+    async function startRecognition() {
+      const supplier     = document.getElementById('supplier').value.trim();
+      const object       = document.getElementById('object').value;
+      const reqNum       = document.getElementById('requestNumber').value.trim();
+      const deliveryDate = document.getElementById('deliveryDate').value;
+      if (!supplier)     { showError('Введите название поставщика'); return; }
+      if (!object)       { showError('Выберите объект'); return; }
+      if (!reqNum)       { showError('Введите номер заявки'); return; }
+      if (!deliveryDate) { showError('Укажите плановую дату поставки'); return; }
+      if (!selectedFile) { showError('Загрузите файл заявки'); return; }
+
+      show('loading');
+      try {
+        const prepared = await prepareFile(selectedFile);
+        const base64   = await fileToBase64(prepared);
+        const mimeType = prepared.type || 'image/jpeg';
+        gasCall('recognizeImageGAS', { base64Image: base64, mimeType, supplier, requestNumber: reqNum, deliveryDate })
+          .then(result => {
+            const items = result.items || [];
+            fileUrl = result.fileUrl || null;
+            renderTable(items, deliveryDate);
+            document.getElementById('summaryInfo').textContent =
+              `${supplier} · ${object} · № ${reqNum} · ${deliveryDate} · ${items.length} поз.`;
+            const fl = document.getElementById('fileLink');
+            if (fileUrl) { fl.href = fileUrl; fl.classList.remove('hidden'); }
+            else fl.classList.add('hidden');
+            show('step2');
+          })
+          .catch(err => { show('step1'); showError('Ошибка: ' + err.message); });
+      } catch (e) { show('step1'); showError('Ошибка файла: ' + e.message); }
+    }
+
+    function renderTable(items, deliveryDate) {
+      const sup = document.getElementById('supplier').value.trim();
+      const obj = document.getElementById('object').value;
+      document.getElementById('tableBody').innerHTML = '';
+      if (!items.length) addRow();
+      else items.forEach(item => appendRow(sup, obj, deliveryDate, item));
+    }
+
+    function appendRow(supplier, object, deliveryDate, item = {}) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-gray-100 hover:bg-gray-50 group';
+      tr.innerHTML = `
+        <td class="px-4 py-2 text-gray-500 text-sm">${esc(supplier)}</td>
+        <td class="px-4 py-2 text-gray-500 text-sm">${esc(object)}</td>
+        <td class="px-2 py-1.5"><input class="cell-input" type="text"
+          value="${esc(item.nomenclature||'')}" placeholder="Номенклатура"></td>
+        <td class="px-2 py-1.5"><input class="cell-input text-center" type="text"
+          value="${esc(item.unit||'')}" placeholder="шт"></td>
+        <td class="px-2 py-1.5"><input class="cell-input text-right" type="number" min="0" step="any"
+          value="${item.quantity > 0 ? item.quantity : ''}" placeholder="0"></td>
+        <td class="px-2 py-1.5"><input class="cell-input" type="date"
+          value="${esc(item.deliveryDate || deliveryDate || '')}"></td>
+        <td class="px-3 py-2 text-center">
+          <button onclick="this.closest('tr').remove()"
+            class="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </td>`;
+      document.getElementById('tableBody').appendChild(tr);
+    }
+
+    function addRow() {
+      appendRow(
+        document.getElementById('supplier').value.trim(),
+        document.getElementById('object').value,
+        document.getElementById('deliveryDate').value
+      );
+    }
+
+    function esc(s) {
+      return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function submitData() {
+      const rows = Array.from(document.querySelectorAll('#tableBody tr')).map(tr => {
+        const inp = tr.querySelectorAll('input');
+        return { nomenclature: inp[0].value.trim(), unit: inp[1].value.trim(), quantity: inp[2].value, deliveryDate: inp[3].value };
+      }).filter(r => r.nomenclature);
+      if (!rows.length) { showError('Таблица пуста — добавьте хотя бы одну позицию'); return; }
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true; btn.textContent = 'Отправляем...';
+
+      gasCall('saveToSheetGAS', {
+        supplier: document.getElementById('supplier').value.trim(),
+        object:   document.getElementById('object').value,
+        requestNumber: document.getElementById('requestNumber').value.trim(),
+        rows, fileUrl
+      })
+        .then(() => show('success'))
+        .catch(err => {
+          showError('Ошибка: ' + err.message);
+          btn.disabled = false; btn.textContent = 'Отправить в таблицу ✓';
+        });
+    }
+
+    function show(id) {
+      ['setupScreen','step1','loading','step2','success'].forEach(s =>
+        document.getElementById(s).classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function goBack() { show('step1'); }
+    function resetForm() {
+      fileUrl = null;
+      document.getElementById('fileLink').classList.add('hidden');
+      ['supplier','requestNumber','deliveryDate'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('object').selectedIndex = 0;
+      clearFile({ stopPropagation: () => {} });
+      document.getElementById('tableBody').innerHTML = '';
+      show('step1');
+    }
+
+    function showError(msg) {
+      document.getElementById('errorMsg').textContent = msg;
+      const t = document.getElementById('errorToast');
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 4500);
+    }
+  </script>
+</body>
+</html>
