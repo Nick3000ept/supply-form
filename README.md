@@ -11,7 +11,7 @@
 | Что | Где |
 |-----|-----|
 | **Форма для поставщиков** | https://nick3000ept.github.io/supply-form/ |
-| **Календарь поставок** | https://nick3000ept.github.io/supply-form/?cal=КОД — код доступа в `ДОСТУПЫ.md` в корне VS_hub (репозиторий публичный, код сюда не писать!) |
+| **Календарь поставок** | https://nick3000ept.github.io/supply-form/?cal=27abe3a9cfb14596 (решение пользователя 2026-08-21: ссылка не считается секретом) |
 | **Google Таблица с данными** | https://docs.google.com/spreadsheets/d/1LjL-azYiG3WqSH4BB5XgLmlrP2bT4WWbeNXYQmoAJJM (доступ по правам Google, владелец workcacc2025@gmail.com) |
 | **GitHub репо (фронтенд)** | https://github.com/Nick3000ept/supply-form |
 | **GAS-проект (бэкенд)** | https://script.google.com/home/projects/1fNBsW2AvpzhHkFzGyTPRv6_L5to24Q1vKh1cFE8F2DpcJlS8Mh9k7I1t |

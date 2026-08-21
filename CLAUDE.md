@@ -10,7 +10,7 @@
 | Что | Значение |
 |---|---|
 | Сайт (GitHub Pages) | https://nick3000ept.github.io/supply-form/ |
-| Календарь поставок | тот же сайт + `?cal=КОД`; полная ссылка — в `ДОСТУПЫ.md` в корне VS_hub |
+| Календарь поставок | https://nick3000ept.github.io/supply-form/?cal=27abe3a9cfb14596 |
 | GitHub репо | https://github.com/Nick3000ept/supply-form (аккаунт Nick3000ept) |
 | scriptId | `1fNBsW2AvpzhHkFzGyTPRv6_L5to24Q1vKh1cFE8F2DpcJlS8Mh9k7I1t` |
 | **Рабочий deploymentId** | `AKfycbxAcrSDH6xa65Wor3ZHpW3BcZ-yAwwN9PFTynCNDYUbpP7NOev6Ng0e0lH84ykz29nN` |
@@ -33,8 +33,10 @@ Script Properties GAS: `CLAUDE_API_KEY`, `SPREADSHEET_ID`, `DRIVE_FOLDER_ID`, `C
 
 - Разрешённые файлы: `index.html`, `Code.gs`, `appsscript.json`, `README.md`,
   `CLAUDE.md`, `ИНСТРУКЦИЯ.md`, `.gitignore`.
-- **Репозиторий публичный** — секреты (ключи, код календаря `?cal=`) в него не писать
-  ни в код, ни в доки. Все секреты — только в `ДОСТУПЫ.md` в корне VS_hub.
+- **Репозиторий публичный** — секреты (API-ключи, токены, пароли) в него не писать
+  ни в код, ни в доки; они — только в `ДОСТУПЫ.md` в корне VS_hub. Исключение: код
+  календаря `?cal=` пользователь секретом НЕ считает (решение 2026-08-21), ссылка
+  целиком опубликована в README.
 - Запись в таблицу — только лист «Заявки» через `saveToSheetGAS` (appendRow, новые
   строки). Существующие строки и лист «Объекты» из кода не менять (объекты правит
   пользователь руками).
