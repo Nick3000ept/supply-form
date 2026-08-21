@@ -349,17 +349,23 @@
       const blocks = Array.from(c.querySelectorAll('[data-date]'));
       const anchor = blocks.find(b => b.dataset.date >= todayStr) || blocks[blocks.length - 1];
       if (anchor) {
-        anchor.scrollIntoView({ block: 'start' });
-        // Если будущих поставок мало, странице не хватает высоты, чтобы
-        // сегодняшний день оказался у верхнего края — добавляем пустое
-        // место снизу и прокручиваем ещё раз.
-        const gap = anchor.getBoundingClientRect().top;
-        if (gap > 24) {
-          const spacer = document.createElement('div');
-          spacer.style.height = Math.ceil(gap) + 'px';
-          c.appendChild(spacer);
+        const spacer = document.createElement('div');
+        c.appendChild(spacer);
+        const toToday = () => {
           anchor.scrollIntoView({ block: 'start' });
-        }
+          // Если будущих поставок мало, странице не хватает высоты, чтобы
+          // сегодняшний день оказался у верхнего края — добавляем пустое
+          // место снизу и прокручиваем ещё раз.
+          const gap = anchor.getBoundingClientRect().top;
+          if (gap > 24) {
+            spacer.style.height = ((parseInt(spacer.style.height, 10) || 0) + Math.ceil(gap)) + 'px';
+            anchor.scrollIntoView({ block: 'start' });
+          }
+        };
+        toToday();
+        // На телефонах стили применяются с задержкой и позиция сбивается —
+        // после паузы прокручиваем повторно.
+        setTimeout(toToday, 350);
       }
     }
 
