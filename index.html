@@ -18,17 +18,9 @@
   <header class="bg-blue-700 text-white py-4 px-6 shadow-md">
     <div class="max-w-5xl mx-auto">
       <h1 class="text-xl font-bold">Поставка материалов. Ситибэй.</h1>
-      <p class="text-blue-200 text-sm mt-0.5">Заполните форму перед доставкой на объект</p>
+      <p id="headerSubtitle" class="text-blue-200 text-sm mt-0.5">Заполните форму перед доставкой на объект</p>
     </div>
   </header>
-
-  <!-- ── Вкладки (видны только с кодом доступа к календарю) ── -->
-  <div id="tabsNav" class="hidden max-w-5xl mx-auto px-4 pt-6">
-    <div class="flex gap-2">
-      <button id="tabFormBtn" onclick="showTab('form')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"></button>
-      <button id="tabCalBtn" onclick="showTab('calendar')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"></button>
-    </div>
-  </div>
 
   <main class="max-w-5xl mx-auto px-4 py-8">
 
@@ -257,21 +249,20 @@
     let selectedFile = null;
     let fileUrl      = null;
 
-    // Код доступа к календарю: из адреса (?cal=КОД) или запомненный ранее
+    // Код доступа к календарю — из адреса (?cal=КОД).
+    // С кодом сайт работает как просмотр календаря, без формы.
     let calToken = null;
-    let lastFormScreen = 'step1';
     try {
       const urlCal = new URLSearchParams(location.search).get('cal');
-      if (urlCal) { calToken = urlCal.trim(); localStorage.setItem('supplyCalToken', calToken); }
-      else calToken = localStorage.getItem('supplyCalToken');
+      if (urlCal) calToken = urlCal.trim();
     } catch (_) {}
 
     window.addEventListener('load', async () => {
       if (calToken) {
-        document.getElementById('tabsNav').classList.remove('hidden');
-        document.getElementById('tabFormBtn').textContent = 'Подать уведомление';
-        document.getElementById('tabCalBtn').textContent  = 'Календарь поставок';
-        setTabStyles('form');
+        document.getElementById('headerSubtitle').textContent = 'Календарь поставок по дням';
+        show('calendarView');
+        loadCalendar();
+        return;
       }
       try {
         const cfg = await gasCall('isConfigured');
@@ -282,21 +273,6 @@
         showError('Ошибка соединения: ' + err.message);
       }
     });
-
-    // ── Вкладки ──────────────────────────────────────────────────
-    function setTabStyles(tab) {
-      const base     = 'px-4 py-2 rounded-lg text-sm font-medium transition-colors ';
-      const active   = 'bg-blue-600 text-white shadow';
-      const inactive = 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50';
-      document.getElementById('tabFormBtn').className = base + (tab === 'form' ? active : inactive);
-      document.getElementById('tabCalBtn').className  = base + (tab === 'calendar' ? active : inactive);
-    }
-
-    function showTab(tab) {
-      setTabStyles(tab);
-      if (tab === 'calendar') { show('calendarView'); loadCalendar(); }
-      else show(lastFormScreen);
-    }
 
     // ── Календарь поставок ───────────────────────────────────────
     async function loadCalendar() {
@@ -546,7 +522,6 @@
       ['setupScreen','step1','loading','step2','success','calendarView'].forEach(s =>
         document.getElementById(s).classList.add('hidden'));
       document.getElementById(id).classList.remove('hidden');
-      if (id !== 'calendarView') { lastFormScreen = id; if (calToken) setTabStyles('form'); }
     }
     function goBack() { show('step1'); }
     function resetForm() {
