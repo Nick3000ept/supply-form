@@ -329,7 +329,7 @@
         const isPast  = day.date < todayStr;
         if (isToday) title = 'Сегодня · ' + title;
 
-        html += '<div class="mb-6' + (isPast ? ' opacity-60' : '') + '">';
+        html += '<div data-date="' + esc(day.date) + '" class="mb-6 scroll-mt-4' + (isPast ? ' opacity-60' : '') + '">';
         html += '<h3 class="text-sm font-semibold uppercase tracking-wide mb-2 ' +
                 (isToday ? 'text-blue-700' : 'text-gray-500') + '">' + esc(title) + '</h3>';
 
@@ -358,6 +358,12 @@
         html += '</div>';
       });
       c.innerHTML = html;
+
+      // Открываем календарь на сегодняшнем дне: прошедшие поставки
+      // остаются выше (прокрутка вверх), будущие — ниже.
+      const blocks = Array.from(c.querySelectorAll('[data-date]'));
+      const anchor = blocks.find(b => b.dataset.date >= todayStr) || blocks[blocks.length - 1];
+      if (anchor) anchor.scrollIntoView({ block: 'start' });
     }
 
     function initApp() {
