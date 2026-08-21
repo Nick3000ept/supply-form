@@ -297,6 +297,12 @@
         String(now.getMonth() + 1).padStart(2, '0') + '-' +
         String(now.getDate()).padStart(2, '0');
 
+      // Блок «Сегодня» показываем всегда, даже если на сегодня поставок нет
+      if (!days.some(d => d.date === todayStr)) {
+        days = days.concat([{ date: todayStr, deliveries: [] }])
+                   .sort((a, b) => a.date < b.date ? -1 : 1);
+      }
+
       let html = '';
       days.forEach(day => {
         const d = new Date(day.date + 'T00:00:00');
@@ -309,6 +315,9 @@
         html += '<h3 class="text-sm font-semibold uppercase tracking-wide mb-2 ' +
                 (isToday ? 'text-blue-700' : 'text-gray-500') + '">' + esc(title) + '</h3>';
 
+        if (!day.deliveries.length) {
+          html += '<p class="text-sm text-gray-400">На сегодня поставок нет</p>';
+        }
         day.deliveries.forEach(dl => {
           html += '<div class="bg-white rounded-xl shadow-sm border ' +
                   (isToday ? 'border-blue-300' : 'border-gray-200') + ' p-4 mb-3">';
@@ -339,7 +348,19 @@
       // остаются выше (прокрутка вверх), будущие — ниже.
       const blocks = Array.from(c.querySelectorAll('[data-date]'));
       const anchor = blocks.find(b => b.dataset.date >= todayStr) || blocks[blocks.length - 1];
-      if (anchor) anchor.scrollIntoView({ block: 'start' });
+      if (anchor) {
+        anchor.scrollIntoView({ block: 'start' });
+        // Если будущих поставок мало, странице не хватает высоты, чтобы
+        // сегодняшний день оказался у верхнего края — добавляем пустое
+        // место снизу и прокручиваем ещё раз.
+        const gap = anchor.getBoundingClientRect().top;
+        if (gap > 24) {
+          const spacer = document.createElement('div');
+          spacer.style.height = Math.ceil(gap) + 'px';
+          c.appendChild(spacer);
+          anchor.scrollIntoView({ block: 'start' });
+        }
+      }
     }
 
     function initApp() {
