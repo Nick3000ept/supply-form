@@ -11,11 +11,12 @@
 | Что | Где |
 |-----|-----|
 | **Форма для поставщиков** | https://nick3000ept.github.io/supply-form/ |
+| **Календарь поставок** | https://nick3000ept.github.io/supply-form/?cal=КОД — код доступа в `ДОСТУПЫ.md` в корне VS_hub (репозиторий публичный, код сюда не писать!) |
+| **Google Таблица с данными** | https://docs.google.com/spreadsheets/d/1LjL-azYiG3WqSH4BB5XgLmlrP2bT4WWbeNXYQmoAJJM (доступ по правам Google, владелец workcacc2025@gmail.com) |
 | **GitHub репо (фронтенд)** | https://github.com/Nick3000ept/supply-form |
 | **GAS-проект (бэкенд)** | https://script.google.com/home/projects/1fNBsW2AvpzhHkFzGyTPRv6_L5to24Q1vKh1cFE8F2DpcJlS8Mh9k7I1t |
 | **GAS API endpoint** | https://script.google.com/macros/s/AKfycbxAcrSDH6xa65Wor3ZHpW3BcZ-yAwwN9PFTynCNDYUbpP7NOev6Ng0e0lH84ykz29nN/exec |
-| **Google Таблица** | Найти в Google Drive: "Поставки материалов" (аккаунт workcacc2025@gmail.com) |
-| **Папка с файлами на Drive** | "Заявки поставщиков" (аккаунт workcacc2025@gmail.com) |
+| **Папка с файлами заявок на Drive** | "Заявки поставщиков" (аккаунт workcacc2025@gmail.com) |
 
 ---
 
@@ -46,10 +47,26 @@ supply-form/
 ├── index.html        — весь фронтенд (GitHub Pages)
 ├── Code.gs           — бэкенд API (Google Apps Script)
 ├── appsscript.json   — манифест GAS (права, настройки)
-├── .clasp.json       — привязка clasp к GAS-проекту
+├── .clasp.json       — привязка clasp к GAS-проекту (в git не коммитится)
+├── .gitignore        — исключает .clasp.json из git
+├── CLAUDE.md         — операционная шпаргалка для Claude Code
 ├── README.md         — эта документация
 └── ИНСТРУКЦИЯ.md     — инструкция для поставщиков
 ```
+
+---
+
+## API бэкенда (действия doPost)
+
+| Action | Что делает |
+|--------|-----------|
+| `isConfigured` | Проверка настройки (ключ, таблица) + ссылка на таблицу; вызывает автосоздание таблицы |
+| `saveApiKey` | Одноразовая установка ключа Anthropic (повторно — ошибка) |
+| `getObjectsList` | Список объектов из листа «Объекты» |
+| `recognizeImageGAS` | Файл → Google Drive + Claude Vision → массив позиций |
+| `saveToSheetGAS` | Запись строк поставки в лист «Заявки» |
+| `setCalToken` | Одноразовая установка кода доступа к календарю (повторно — ошибка) |
+| `getCalendar` | Поставки, сгруппированные по дням; требует код доступа (`CAL_TOKEN`) |
 
 ---
 
@@ -97,8 +114,10 @@ git remote set-url origin https://Nick3000ept:<TOKEN>@github.com/Nick3000ept/sup
 ```bash
 cd supply-form
 clasp push --force
-clasp deploy --deploymentId AKfycbxAcrSDH6xa65Wor3ZHpW3BcZ-yAwwN9PFTynCNDYUbpP7NOev6Ng0e0lH84ykz29nN --description "что изменили"
+clasp update-deployment AKfycbxAcrSDH6xa65Wor3ZHpW3BcZ-yAwwN9PFTynCNDYUbpP7NOev6Ng0e0lH84ykz29nN --description "vN: что изменилось"
 ```
+
+⚠️ Только `update-deployment` с этим ID — `clasp deploy` без ID создаст НОВЫЙ деплоймент с новым URL, и фронт перестанет работать. В проекте есть старые неиспользуемые деплойменты — не трогать.
 
 ### Изменения во фронтенде (index.html)
 
@@ -168,3 +187,7 @@ GitHub Pages обновится автоматически через 1-2 мин
 **Не распознаёт файлы** → проверить CLAUDE_API_KEY в Script Properties GAS-проекта
 
 **Файлы не сохраняются на Drive** → запустить функцию `initDriveFolder` в GAS-редакторе для повторной авторизации Drive
+
+**Календарь пишет «Нет доступа»** → в ссылке нет или неверный `?cal=КОД`; правильная ссылка — в `ДОСТУПЫ.md` в корне VS_hub, эталон кода — Script Property `CAL_TOKEN`
+
+**Разовая ошибка «Сервер временно недоступен»** → GAS вернул HTML вместо JSON; фронт сам повторяет запросы чтения до 3 раз, при повторении — проверить деплоймент
