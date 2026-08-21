@@ -22,6 +22,14 @@
     </div>
   </header>
 
+  <!-- ── Вкладки (видны только с кодом доступа к календарю) ── -->
+  <div id="tabsNav" class="hidden max-w-5xl mx-auto px-4 pt-6">
+    <div class="flex gap-2">
+      <button id="tabFormBtn" onclick="showTab('form')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"></button>
+      <button id="tabCalBtn" onclick="showTab('calendar')" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"></button>
+    </div>
+  </div>
+
   <main class="max-w-5xl mx-auto px-4 py-8">
 
     <!-- ── SETUP ── -->
@@ -199,6 +207,11 @@
       </button>
     </div>
 
+    <!-- ── Календарь поставок ── -->
+    <div id="calendarView" class="hidden">
+      <div id="calContent"></div>
+    </div>
+
   </main>
 
   <!-- Error toast -->
@@ -223,7 +236,22 @@
     let selectedFile = null;
     let fileUrl      = null;
 
+    // Код доступа к календарю: из адреса (?cal=КОД) или запомненный ранее
+    let calToken = null;
+    let lastFormScreen = 'step1';
+    try {
+      const urlCal = new URLSearchParams(location.search).get('cal');
+      if (urlCal) { calToken = urlCal.trim(); localStorage.setItem('supplyCalToken', calToken); }
+      else calToken = localStorage.getItem('supplyCalToken');
+    } catch (_) {}
+
     window.addEventListener('load', async () => {
+      if (calToken) {
+        document.getElementById('tabsNav').classList.remove('hidden');
+        document.getElementById('tabFormBtn').textContent = 'Подать уведомление';
+        document.getElementById('tabCalBtn').textContent  = 'Календарь поставок';
+        setTabStyles('form');
+      }
       try {
         const cfg = await gasCall('isConfigured');
         if (!cfg.hasApiKey) show('setupScreen');
@@ -233,6 +261,83 @@
         showError('Ошибка соединения: ' + err.message);
       }
     });
+
+    // ── Вкладки ──────────────────────────────────────────────────
+    function setTabStyles(tab) {
+      const base     = 'px-4 py-2 rounded-lg text-sm font-medium transition-colors ';
+      const active   = 'bg-blue-600 text-white shadow';
+      const inactive = 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50';
+      document.getElementById('tabFormBtn').className = base + (tab === 'form' ? active : inactive);
+      document.getElementById('tabCalBtn').className  = base + (tab === 'calendar' ? active : inactive);
+    }
+
+    function showTab(tab) {
+      setTabStyles(tab);
+      if (tab === 'calendar') { show('calendarView'); loadCalendar(); }
+      else show(lastFormScreen);
+    }
+
+    // ── Календарь поставок ───────────────────────────────────────
+    async function loadCalendar() {
+      const c = document.getElementById('calContent');
+      c.innerHTML = '<p class="text-center text-gray-400 py-16">Загружаем календарь...</p>';
+      try {
+        const data = await gasCall('getCalendar', { token: calToken });
+        renderCalendar((data && data.days) || []);
+      } catch (err) {
+        c.innerHTML = '<p class="text-center text-red-500 py-16">Ошибка: ' + esc(err.message) + '</p>';
+      }
+    }
+
+    function renderCalendar(days) {
+      const c = document.getElementById('calContent');
+      if (!days.length) {
+        c.innerHTML = '<p class="text-center text-gray-400 py-16">Поставок за последние две недели и на будущее пока нет</p>';
+        return;
+      }
+      const now = new Date();
+      const todayStr = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+
+      let html = '';
+      days.forEach(day => {
+        const d = new Date(day.date + 'T00:00:00');
+        let title = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' });
+        const isToday = day.date === todayStr;
+        const isPast  = day.date < todayStr;
+        if (isToday) title = 'Сегодня · ' + title;
+
+        html += '<div class="mb-6' + (isPast ? ' opacity-60' : '') + '">';
+        html += '<h3 class="text-sm font-semibold uppercase tracking-wide mb-2 ' +
+                (isToday ? 'text-blue-700' : 'text-gray-500') + '">' + esc(title) + '</h3>';
+
+        day.deliveries.forEach(dl => {
+          html += '<div class="bg-white rounded-xl shadow-sm border ' +
+                  (isToday ? 'border-blue-300' : 'border-gray-200') + ' p-4 mb-3">';
+          html += '<div class="flex flex-wrap items-center gap-2 mb-2">' +
+                    '<span class="font-semibold text-gray-800">' + esc(dl.supplier) + '</span>' +
+                    '<span class="text-gray-400">→</span>' +
+                    '<span class="font-semibold text-gray-800">' + esc(dl.contractor) + '</span>' +
+                    '<span class="ml-auto text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full">' + esc(dl.object) + '</span>' +
+                  '</div>';
+          html += '<ul class="text-sm text-gray-600 space-y-0.5">';
+          dl.items.forEach(it => {
+            const qty = [it.q, it.u].filter(Boolean).join(' ');
+            html += '<li class="flex justify-between gap-3"><span>' + esc(it.n) + '</span>' +
+                    '<span class="text-gray-800 font-medium whitespace-nowrap">' + esc(qty) + '</span></li>';
+          });
+          html += '</ul>';
+          if (dl.fileUrl) {
+            html += '<a href="' + esc(dl.fileUrl) + '" target="_blank" rel="noopener" ' +
+                    'class="inline-block mt-2 text-xs text-blue-600 hover:text-blue-800 underline">Открыть заявку ↗</a>';
+          }
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+      c.innerHTML = html;
+    }
 
     function initApp() {
       show('step1');
@@ -411,9 +516,10 @@
     }
 
     function show(id) {
-      ['setupScreen','step1','loading','step2','success'].forEach(s =>
+      ['setupScreen','step1','loading','step2','success','calendarView'].forEach(s =>
         document.getElementById(s).classList.add('hidden'));
       document.getElementById(id).classList.remove('hidden');
+      if (id !== 'calendarView') { lastFormScreen = id; if (calToken) setTabStyles('form'); }
     }
     function goBack() { show('step1'); }
     function resetForm() {
