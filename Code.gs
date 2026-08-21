@@ -276,11 +276,6 @@ function getCalendar(token) {
   const tz     = Session.getScriptTimeZone();
   const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
 
-  // Показываем поставки не старше двух недель (история целиком — в таблице)
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 14);
-  cutoff.setHours(0, 0, 0, 0);
-
   const byKey = {};
   values.forEach(r => {
     const supplier   = String(r[1]).trim();
@@ -296,7 +291,6 @@ function getCalendar(token) {
       dateStr = m ? (m[3] + '-' + m[2] + '-' + m[1]) : s.slice(0, 10);
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
-    if (new Date(dateStr + 'T00:00:00') < cutoff) return;
 
     const key = dateStr + '|' + supplier + '|' + contractor + '|' + object;
     if (!byKey[key]) byKey[key] = { date: dateStr, supplier: supplier, contractor: contractor, object: object, fileUrl: '', items: [] };

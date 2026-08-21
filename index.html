@@ -223,14 +223,35 @@
   <script>
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbxAcrSDH6xa65Wor3ZHpW3BcZ-yAwwN9PFTynCNDYUbpP7NOev6Ng0e0lH84ykz29nN/exec';
 
+    // Запросы на чтение повторяем до 3 раз: GAS изредка отвечает
+    // HTML-страницей ошибки вместо JSON. Запись не повторяем,
+    // чтобы при обрыве связи не записать данные дважды.
+    const RETRYABLE = ['isConfigured', 'getObjectsList', 'getCalendar'];
+
     async function gasCall(action, params = {}) {
-      const res = await fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action, ...params })
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error);
-      return json.data;
+      const attempts = RETRYABLE.includes(action) ? 3 : 1;
+      let lastErr;
+      for (let i = 1; i <= attempts; i++) {
+        try {
+          const res  = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action, ...params })
+          });
+          const text = await res.text();
+          let json;
+          try { json = JSON.parse(text); }
+          catch (_) { throw new Error('Сервер временно недоступен, попробуйте ещё раз'); }
+          if (!json.ok) throw new Error(json.error);
+          return json.data;
+        } catch (err) {
+          lastErr = err;
+          // Отказ по смыслу (нет доступа и т.п.) не повторяем
+          if (i < attempts && err.message.indexOf('Нет доступа') === -1) {
+            await new Promise(r => setTimeout(r, 800 * i));
+          } else break;
+        }
+      }
+      throw lastErr;
     }
 
     let selectedFile = null;
